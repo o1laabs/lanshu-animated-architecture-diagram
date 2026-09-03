@@ -1,5 +1,10 @@
 ---
 name: lanshu-animated-architecture-diagram
+version: 1.0.0
+display_name: 岚叔动态架构图
+display_name_en: Lanshu Animated Architecture Diagram
+description_zh: 创建岚叔风格的高质感黑底手绘架构图和流程图，输出可编辑的 Excalidraw 文件、PNG 预览和带流动高亮效果的 GIF。
+description_en: Create premium black-canvas hand-drawn architecture and process diagrams with editable Excalidraw files, PNG previews, and animated GIFs with moving flow highlights.
 description: Create premium hand-drawn architecture and process diagrams in the Lanshu animated GIF style, with editable .excalidraw files, static PNG previews, and genuinely animated GIFs with moving flow highlights. Use this skill whenever the user asks for 岚叔动态架构图, Excalidraw-like diagrams, DailyDoseOfDS-style black-background sketches, animated architecture/process GIFs, polished flowcharts, visual explanations of articles or system designs, or asks to replicate or improve a reference diagram with hand-drawn animated effects.
 ---
 
