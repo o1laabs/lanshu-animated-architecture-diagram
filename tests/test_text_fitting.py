@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SKILL_ROOT = ROOT
 MODULE_PATH = ROOT / "scripts" / "render_animated_diagram.py"
 
 
@@ -91,7 +92,7 @@ class TextFittingTest(unittest.TestCase):
             self.assertIn(word, flattened)
 
     def test_render_writes_wrapped_text_to_excalidraw(self):
-        spec = json.loads((ROOT / "assets" / "default-spec.json").read_text(encoding="utf-8"))
+        spec = json.loads((SKILL_ROOT / "assets" / "default-spec.json").read_text(encoding="utf-8"))
         spec["decision"]["body"] = "checkpoint confirmation required"
         with tempfile.TemporaryDirectory() as tmp:
             result = self.renderer.write_outputs(spec, Path(tmp), "sample")
