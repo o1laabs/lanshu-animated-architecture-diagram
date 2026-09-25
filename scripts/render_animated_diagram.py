@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import argparse
 import json
 import math
@@ -51,25 +52,76 @@ def scaled_box(x, y, w, h):
     return (c(x), c(y), c(x + w), c(y + h))
 
 
+def _fontconfig_lookup(pattern):
+    """Ask fontconfig for a real font file. Returns None if unavailable."""
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["fc-match", "-f", "%{file}", pattern],
+            capture_output=True, text=True, timeout=5,
+        )
+        path = (out.stdout or "").strip()
+        if path and os.path.exists(path):
+            return path
+    except Exception:
+        pass
+    return None
+
+
 def font_candidates(hand=False, cjk=False, bold=False):
-    if hand:
-        return [
-            "/System/Library/Fonts/Supplemental/Chalkduster.ttf",
-            "/System/Library/Fonts/MarkerFelt.ttc",
-            "/System/Library/Fonts/Noteworthy.ttc",
-            "/System/Library/Fonts/Supplemental/Bradley Hand Bold.ttf",
-        ]
-    if cjk:
-        return [
-            "/System/Library/Fonts/STHeiti Medium.ttc" if bold else "/System/Library/Fonts/STHeiti Light.ttc",
-            "/System/Library/Fonts/Hiragino Sans GB.ttc",
-            "/Library/Fonts/Arial Unicode.ttf",
-            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
-        ]
-    return [
+    """Cross-platform font candidates, macOS first (original order preserved).
+
+    The original list only contained /System/Library/Fonts paths, so on any
+    non-Mac machine every candidate raised OSError and load_font() silently
+    fell back to Pillow's 10px bitmap default -- which broke fit_text()
+    entirely (no wrapping, no size scaling, CJK rendered as tofu).
+    """
+    MAC_HAND = [
+        "/System/Library/Fonts/Supplemental/Chalkduster.ttf",
+        "/System/Library/Fonts/MarkerFelt.ttc",
+        "/System/Library/Fonts/Noteworthy.ttc",
+        "/System/Library/Fonts/Supplemental/Bradley Hand Bold.ttf",
+    ]
+    MAC_CJK = [
+        "/System/Library/Fonts/STHeiti Medium.ttc" if bold else "/System/Library/Fonts/STHeiti Light.ttc",
+        "/System/Library/Fonts/Hiragino Sans GB.ttc",
+        "/Library/Fonts/Arial Unicode.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+    ]
+    MAC_LATIN = [
         "/System/Library/Fonts/Helvetica.ttc",
         "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
     ]
+
+    LINUX_CJK = [
+        "/usr/share/fonts/noto/NotoSansCJK-Bold.ttc" if bold else "/usr/share/fonts/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc" if bold else "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/wenquanyi/wqy-zenhei/wqy-zenhei.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+    ]
+    LINUX_LATIN = [
+        "/usr/share/fonts/opensans/OpenSans-Bold.ttf" if bold else "/usr/share/fonts/opensans/OpenSans-Regular.ttf",
+        "/usr/share/fonts/truetype/open-sans/OpenSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/open-sans/OpenSans-Regular.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/cantarell/Cantarell-Bold.otf" if bold else "/usr/share/fonts/cantarell/Cantarell-Regular.otf",
+    ]
+    WIN_LATIN = [
+        r"C:\Windows\Fonts\segoeui.ttf",
+        r"C:\Windows\Fonts\arial.ttf",
+    ]
+    WIN_CJK = [
+        r"C:\Windows\Fonts\msyh.ttc",
+        r"C:\Windows\Fonts\simhei.ttf",
+    ]
+
+    if hand:
+        return MAC_HAND + LINUX_LATIN + WIN_LATIN
+    if cjk:
+        return MAC_CJK + LINUX_CJK + WIN_CJK
+    return MAC_LATIN + LINUX_LATIN + WIN_LATIN
 
 
 def load_font(size, hand=False, cjk=False, bold=False):
@@ -78,6 +130,19 @@ def load_font(size, hand=False, cjk=False, bold=False):
             return ImageFont.truetype(path, c(size))
         except OSError:
             continue
+    # Last resort: ask fontconfig before giving up.
+    for pattern in (["Noto Sans CJK SC", "sans-serif"] if cjk else ["DejaVu Sans", "sans-serif"]):
+        path = _fontconfig_lookup(pattern)
+        if path:
+            try:
+                return ImageFont.truetype(path, c(size))
+            except OSError:
+                continue
+    sys.stderr.write(
+        "[lanshu] WARNING: no scalable font found; falling back to Pillow's "
+        "bitmap default. Text will not wrap or scale correctly. "
+        "Install a CJK font (e.g. `apk add font-noto-cjk`).\n"
+    )
     return ImageFont.load_default()
 
 
